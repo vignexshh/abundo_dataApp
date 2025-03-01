@@ -1,22 +1,35 @@
-@import "tailwindcss";
+/* app/globals.css */
 
-@theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@import "tailwindcss/preflight";
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
+/* Default light theme styles */
+.light {
+  --background: #ffffff; /* Explicitly set light mode colors */
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
+/* Dark theme styles (optional, for future use) */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* Default :root styles */
+:root {
+  --background: #ffffff; /* Default to light mode */
+  --foreground: #171717;
+}
+
+/* Media query for prefers-color-scheme: dark */
+@media (prefers-color-scheme: light) {
+  :root:not(.light) {
+    --background: #0a0a0a; /* Only apply dark mode if not explicitly light */
     --foreground: #ededed;
   }
 }
 
+/* Global body styles using CSS variables */
 body {
   color: var(--foreground);
   background: var(--background);
