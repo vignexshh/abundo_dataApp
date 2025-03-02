@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import React from "react";
-import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
@@ -25,18 +24,13 @@ export const metadata: Metadata = {
 
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
-
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        
         {/* theme provider issue arises here  */}
-
-          <AntdRegistry>
-            {children}
-          </AntdRegistry>
-
-      
+        <AntdRegistry>
+          {children}
+        </AntdRegistry>
       </body>
     </html>
   );

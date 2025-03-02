@@ -2,60 +2,67 @@
 import React, { useEffect, useState } from "react";
 import { Flex, Card, Select, Button, InputNumber, Table } from "antd";
 
-// Utility function to fetch JSON files from the API
-const fetchJsonFiles = async (): Promise<string[]> => {
-  const response = await fetch("/api/json-files");
-  if (!response.ok) {
-    throw new Error("Failed to fetch JSON files");
-  }
-  const data = await response.json();
-  return data.files; // Array of JSON file names
-};
-
-// Utility function to load JSON data
-const loadJsonData = async (fileName: string): Promise<any[]> => {
-  const response = await fetch(`/data/${fileName}`);
-  if (!response.ok) {
-    throw new Error(`Failed to load JSON data for file: ${fileName}`);
-  }
-  const data = await response.json();
-  return data;
-};
-
 const Page: React.FC = () => {
-  const [jsonFiles, setJsonFiles] = useState<string[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
+  const [collections, setCollections] = useState<string[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [jsonData, setJsonData] = useState<any[]>([]);
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [uniqueValues, setUniqueValues] = useState<Record<string, any[]>>({});
 
-  // Fetch available JSON files on component mount
+  // Fetch available databases
   useEffect(() => {
-    fetchJsonFiles().then((files) => setJsonFiles(files));
+    fetch("/api/databases")
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to fetch databases");
+        return response.json();
+      })
+      .then((data) => setDatabases(data.databases || []))
+      .catch((error) => console.error("Error fetching databases:", error));
   }, []);
 
-  // Load JSON data when a file is selected
+  // Fetch collections when a database is selected
   useEffect(() => {
-    if (selectedFile) {
-      loadJsonData(selectedFile).then((data) => {
-        setJsonData(data);
-
-        // Extract unique values for each field
-        const uniqueFieldValues: Record<string, any[]> = {};
-        data.forEach((item) => {
-          Object.keys(item).forEach((key) => {
-            if (!uniqueFieldValues[key]) uniqueFieldValues[key] = [];
-            if (!uniqueFieldValues[key].includes(item[key])) {
-              uniqueFieldValues[key].push(item[key]);
-            }
-          });
-        });
-
-        setUniqueValues(uniqueFieldValues);
-        setFilters({});
-      });
+    if (selectedDatabase) {
+      fetch(`/api/collections?db=${selectedDatabase}`)
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to fetch collections");
+          return response.json();
+        })
+        .then((data) => setCollections(data.collections || []))
+        .catch((error) => console.error("Error fetching collections:", error));
     }
-  }, [selectedFile]);
+  }, [selectedDatabase]);
+
+  // Load data when a collection is selected
+  useEffect(() => {
+    if (selectedDatabase && selectedCollection) {
+      fetch(`/api/data?db=${selectedDatabase}&collection=${selectedCollection}`)
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to fetch data");
+          return response.json();
+        })
+        .then((data) => {
+          setJsonData(data);
+
+          // Extract unique values for each field
+          const uniqueFieldValues: Record<string, any[]> = {};
+          data.forEach((item: any) => {
+            Object.keys(item).forEach((key) => {
+              if (!uniqueFieldValues[key]) uniqueFieldValues[key] = [];
+              if (!uniqueFieldValues[key].includes(item[key])) {
+                uniqueFieldValues[key].push(item[key]);
+              }
+            });
+          });
+
+          setUniqueValues(uniqueFieldValues);
+          setFilters({});
+        })
+        .catch((error) => console.error("Error fetching data:", error));
+    }
+  }, [selectedDatabase, selectedCollection]);
 
   // Handle filter changes
   const handleFilterChange = (field: string, value: any) => {
@@ -121,21 +128,33 @@ const Page: React.FC = () => {
   return (
     <div className="p-5">
       <Flex gap="middle" vertical>
-        {/* JSON File Selector */}
-        <Card title="Select JSON File">
+        {/* Database Selector */}
+        <Card title="Select Database">
           <Select
-            placeholder="Select a JSON file"
-            value={selectedFile}
-            onChange={(value) => setSelectedFile(value)}
-            options={jsonFiles.map((file) => ({ value: file, label: file }))}
+            placeholder="Select a database"
+            value={selectedDatabase}
+            onChange={(value) => setSelectedDatabase(value)}
+            options={databases.map((db) => ({ value: db, label: db }))}
             style={{ width: "100%" }}
           />
         </Card>
 
+        {/* Collection Selector */}
+        {selectedDatabase && (
+          <Card title="Select Collection">
+            <Select
+              placeholder="Select a collection"
+              value={selectedCollection}
+              onChange={(value) => setSelectedCollection(value)}
+              options={collections.map((coll) => ({ value: coll, label: coll }))}
+              style={{ width: "100%" }}
+            />
+          </Card>
+        )}
+
         {/* Filters Card */}
-        {selectedFile && (
+        {selectedCollection && (
           <Card title="Available Filters & Data Tweaks">
-            
             {Object.keys(uniqueValues).map((field, index) => (
               <Card.Grid hoverable={false} key={field} style={gridStyle}>
                 <div className="pt-5 pb-5 flex flex-row items-center gap-5">
@@ -151,9 +170,9 @@ const Page: React.FC = () => {
         )}
 
         {/* Data Table Card */}
-        {selectedFile && (
-          <div >
-            <div style={{ overflowX: "auto"  }}>
+        {selectedCollection && (
+          <div>
+            <div style={{ overflowX: "auto" }}>
               <Table
                 dataSource={filteredData}
                 columns={Object.keys(jsonData[0] || {}).map((key) => ({
@@ -161,7 +180,7 @@ const Page: React.FC = () => {
                   dataIndex: key,
                   key: key,
                 }))}
-                rowKey={(record) => record.SNo || Math.random().toString()}
+                rowKey={(record) => record._id || Math.random().toString()}
                 pagination={{ pageSize: 10 }}
                 style={{ minHeight: 100 }}
               />
