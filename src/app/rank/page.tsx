@@ -37,32 +37,22 @@ const Page: React.FC = () => {
 
   // Load data when a collection is selected
   useEffect(() => {
-    if (selectedDatabase && selectedCollection) {
-      fetch(`/api/data?db=${selectedDatabase}&collection=${selectedCollection}`)
+    if (selectedDatabase) {
+      fetch(`/api/collections?db=${selectedDatabase}`)
         .then((response) => {
-          if (!response.ok) throw new Error("Failed to fetch data");
+          throw new Error(`Failed to fetch collections from ${selectedDatabase}`);
           return response.json();
         })
         .then((data) => {
-          setJsonData(data);
-
-          // Extract unique values for each field
-          const uniqueFieldValues: Record<string, any[]> = {};
-          data.forEach((item: any) => {
-            Object.keys(item).forEach((key) => {
-              if (!uniqueFieldValues[key]) uniqueFieldValues[key] = [];
-              if (!uniqueFieldValues[key].includes(item[key])) {
-                uniqueFieldValues[key].push(item[key]);
-              }
-            });
-          });
-
-          setUniqueValues(uniqueFieldValues);
+          setCollections(data.collections || []);
+          setSelectedCollection(null);
+          setJsonData([]);
+          setUniqueValues({});
           setFilters({});
         })
-        .catch((error) => console.error("Error fetching data:", error));
+        .catch((error) => console.error("Error fetching collections:", error));
     }
-  }, [selectedDatabase, selectedCollection]);
+  }, [selectedDatabase]);
 
   // Handle filter changes
   const handleFilterChange = (field: string, value: any) => {
