@@ -1,7 +1,7 @@
-// app/api/collections/route.ts
+
 import { MongoClient } from "mongodb";
 import { NextResponse } from "next/server";
-
+// add single connection process with lib later  
 const uri = process.env.MONGODB_URI as string;
 const client = new MongoClient(uri);
 
