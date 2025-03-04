@@ -1,3 +1,4 @@
+// marking for removal
 const { connectToDatabase } = require('./mongodb');
 
 module.exports = async (req, res) => {
