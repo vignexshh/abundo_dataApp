@@ -1,5 +1,3 @@
-// page.tsx (app router)
-
 "use client";
 import React, { useEffect, useState } from "react";
 import { Flex, Card, Select, Button, Table } from "antd";
@@ -8,7 +6,7 @@ interface DataItem {
   _id: string;
   listCategory: string;
   listSubCategory: string;
-  [key: string]: any; // Allow other dynamic fields
+  [key: string]: any;
 }
 
 const Page: React.FC = () => {
@@ -17,8 +15,8 @@ const Page: React.FC = () => {
   const [uniqueListCategories, setUniqueListCategories] = useState<string[]>([]);
   const [uniqueListSubCategories, setUniqueListSubCategories] = useState<string[]>([]);
   const [selectedListCategory, setSelectedListCategory] = useState<string | null>(null);
+  const [uniqueFieldValues, setUniqueFieldValues] = useState<Record<string, string[]>>({});
 
-  // Fetch data and extract unique categories
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -29,6 +27,17 @@ const Page: React.FC = () => {
 
         const categories = [...new Set(data.data.map((item: DataItem) => item.listCategory))];
         setUniqueListCategories(categories);
+
+        // Extract unique values for all other fields
+        if (data.data && data.data.length > 0) {
+          const unique: Record<string, string[]> = {};
+          Object.keys(data.data[0]).forEach((key) => {
+            if (key !== "listCategory" && key !== "listSubCategory" && key !== "_id") {
+              unique[key] = [...new Set(data.data.map((item: DataItem) => String(item[key])))];
+            }
+          });
+          setUniqueFieldValues(unique);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -99,6 +108,19 @@ const Page: React.FC = () => {
         )}
 
         <Card title="Available Filters & Data Tweaks">
+          {Object.keys(uniqueFieldValues).map((field) => (
+            <div key={field} style={{ marginBottom: "10px" }}>
+              <Select
+                showSearch
+                allowClear
+                placeholder={`Select ${field}`}
+                value={filters[field]}
+                onChange={(value) => handleFilterChange(field, value)}
+                options={uniqueFieldValues[field].map((val) => ({ value: val, label: val }))}
+                style={{ width: "100%" }}
+              />
+            </div>
+          ))}
           <Button danger type="primary" onClick={clearFilters} style={{ marginBottom: 16 }}>
             Clear All Filters
           </Button>
@@ -110,13 +132,12 @@ const Page: React.FC = () => {
               <Table
                 dataSource={filteredData}
                 columns={Object.keys(jsonData[0] || {})
-                .filter((key) => !["_id", "SNo", "listCategory", "listSubCategory"].includes(key)) 
-                .map((key) => ({
-                  title: key,
-                  dataIndex: key,
-                  key: key,
-                }))}
-                
+                  .filter((key) => !["_id", "SNo", "listCategory", "listSubCategory"].includes(key))
+                  .map((key) => ({
+                    title: key,
+                    dataIndex: key,
+                    key: key,
+                  }))}
                 rowKey={(record) => record._id || Math.random().toString()}
                 pagination={{ pageSize: 10 }}
                 style={{ minHeight: 100 }}
