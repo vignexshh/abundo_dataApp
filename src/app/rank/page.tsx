@@ -1,166 +1,110 @@
+// page.tsx (app router)
+
 "use client";
 import React, { useEffect, useState } from "react";
-import { Flex, Card, Select, Button, InputNumber, Table } from "antd";
+import { Flex, Card, Select, Button, Table } from "antd";
+
+interface DataItem {
+  _id: string;
+  listCategory: string;
+  listSubCategory: string;
+  [key: string]: any; // Allow other dynamic fields
+}
 
 const Page: React.FC = () => {
-  const [databases, setDatabases] = useState<string[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
-  const [collections, setCollections] = useState<string[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
-  const [jsonData, setJsonData] = useState<any[]>([]);
-  const [filters, setFilters] = useState<Record<string, any>>({});
-  const [uniqueValues, setUniqueValues] = useState<Record<string, any[]>>({});
+  const [jsonData, setJsonData] = useState<DataItem[]>([]);
+  const [filters, setFilters] = useState<Record<string, string | null>>({});
+  const [uniqueListCategories, setUniqueListCategories] = useState<string[]>([]);
+  const [uniqueListSubCategories, setUniqueListSubCategories] = useState<string[]>([]);
+  const [selectedListCategory, setSelectedListCategory] = useState<string | null>(null);
 
-  // Fetch available databases
+  // Fetch data and extract unique categories
   useEffect(() => {
-    fetch("/api/databases")
-      .then((response) => {
-        if (!response.ok) throw new Error("Failed to fetch databases");
-        return response.json();
-      })
-      .then((data) => setDatabases(data.databases || []))
-      .catch((error) => console.error("Error fetching databases:", error));
+    const fetchData = async () => {
+      try {
+        const response = await fetch("/api/data");
+        if (!response.ok) throw new Error("Failed to fetch data");
+        const data: { data: DataItem[] } = await response.json();
+        setJsonData(data.data || []);
+
+        const categories = [...new Set(data.data.map((item: DataItem) => item.listCategory))];
+        setUniqueListCategories(categories);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Fetch collections when a database is selected
   useEffect(() => {
-    if (selectedDatabase) {
-      fetch(`/api/collections?db=${selectedDatabase}`)
-        .then((response) => {
-          if (!response.ok) throw new Error("Failed to fetch collections");
-          return response.json();
-        })
-        .then((data) => setCollections(data.collections || []))
-        .catch((error) => console.error("Error fetching collections:", error));
+    if (selectedListCategory) {
+      const subCategories = [
+        ...new Set(
+          jsonData
+            .filter((item) => item.listCategory === selectedListCategory)
+            .map((item) => item.listSubCategory)
+        ),
+      ];
+      setUniqueListSubCategories(subCategories);
+    } else {
+      setUniqueListSubCategories([]);
     }
-  }, [selectedDatabase]);
+  }, [selectedListCategory, jsonData]);
 
-  // Load data when a collection is selected
-  useEffect(() => {
-    if (selectedDatabase) {
-      fetch(`/api/collections?db=${selectedDatabase}`)
-        .then((response) => {
-          throw new Error(`Failed to fetch collections from ${selectedDatabase}`);
-          return response.json();
-        })
-        .then((data) => {
-          setCollections(data.collections || []);
-          setSelectedCollection(null);
-          setJsonData([]);
-          setUniqueValues({});
-          setFilters({});
-        })
-        .catch((error) => console.error("Error fetching collections:", error));
-    }
-  }, [selectedDatabase]);
+  const handleListCategoryChange = (value: string | null) => {
+    setSelectedListCategory(value);
+    setFilters((prev) => ({ ...prev, listCategory: value, listSubCategory: null }));
+  };
 
-  // Handle filter changes
-  const handleFilterChange = (field: string, value: any) => {
+  const handleFilterChange = (field: string, value: string | null) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setFilters({});
+    setSelectedListCategory(null);
   };
 
-  // Filtered data based on current filters
   const filteredData = jsonData.filter((item) =>
     Object.keys(filters).every((key) => {
-      if (filters[key] === undefined || filters[key] === null) return true;
-      return String(item[key]).toLowerCase().includes(String(filters[key]).toLowerCase());
+      if (!filters[key]) return true;
+      return String(item[key]).toLowerCase() === String(filters[key]).toLowerCase();
     })
   );
-
-  // Dynamically generate filter components
-  const renderFilterComponent = (field: string, values: any[]) => {
-    const isInteger = values.every((val) => typeof val === "number" && Number.isInteger(val));
-
-    if (isInteger) {
-      return (
-        <InputNumber
-          placeholder={`Enter ${field}`}
-          value={filters[field]}
-          onChange={(value) => handleFilterChange(field, value)}
-          min={1}
-          style={{ width: "100%" }}
-        />
-      );
-    }
-
-    const options = values.map((value) => ({
-      value,
-      label: value,
-    }));
-
-    return (
-      <Select
-        showSearch={values.length > 8}
-        allowClear
-        placeholder={`Select ${field}`}
-        value={filters[field]}
-        onChange={(value) => handleFilterChange(field, value)}
-        options={options}
-        style={{ width: "100%" }}
-      />
-    );
-  };
-
-  // Grid style for responsive layout
-  const gridStyle: React.CSSProperties = {
-    width: "50%",
-    textAlign: "start",
-    padding: 10,
-    paddingLeft: 25,
-    paddingRight: 25,
-  };
 
   return (
     <div className="p-5">
       <Flex gap="middle" vertical>
-        {/* Database Selector */}
-        <Card title="Select Database">
+        <Card title="Select Category">
           <Select
-            placeholder="Select a database"
-            value={selectedDatabase}
-            onChange={(value) => setSelectedDatabase(value)}
-            options={databases.map((db) => ({ value: db, label: db }))}
+            placeholder="Select a Category"
+            value={selectedListCategory}
+            onChange={handleListCategoryChange}
+            options={uniqueListCategories.map((cat) => ({ value: cat, label: cat }))}
             style={{ width: "100%" }}
           />
         </Card>
 
-        {/* Collection Selector */}
-        {selectedDatabase && (
-          <Card title="Select Collection">
+        {selectedListCategory && (
+          <Card title="Select Sub-Category">
             <Select
-              placeholder="Select a collection"
-              value={selectedCollection}
-              onChange={(value) => setSelectedCollection(value)}
-              options={collections.map((coll) => ({ value: coll, label: coll }))}
+              placeholder="Select a Sub-Category"
+              value={filters.listSubCategory}
+              onChange={(value) => handleFilterChange("listSubCategory", value)}
+              options={uniqueListSubCategories.map((subCat) => ({ value: subCat, label: subCat }))}
               style={{ width: "100%" }}
+              allowClear
             />
           </Card>
         )}
 
-        {/* Filters Card */}
-        {selectedCollection && (
-          <Card title="Available Filters & Data Tweaks">
-            {Object.keys(uniqueValues).map((field, index) => (
-              <Card.Grid hoverable={false} key={field} style={gridStyle}>
-                <div className="pt-5 pb-5 flex flex-row items-center gap-5">
-                  <p className="font-bold">{field}:</p>
-                  {renderFilterComponent(field, uniqueValues[field])}
-                </div>
-              </Card.Grid>
-            ))}
-            <Button danger type="primary" onClick={clearFilters} style={{ marginBottom: 16 }}>
-              Clear All Filters
-            </Button>
-          </Card>
-        )}
+        <Card title="Available Filters & Data Tweaks">
+          <Button danger type="primary" onClick={clearFilters} style={{ marginBottom: 16 }}>
+            Clear All Filters
+          </Button>
+        </Card>
 
-        {/* Data Table Card */}
-        {selectedCollection && (
+        {jsonData.length > 0 && (
           <div>
             <div style={{ overflowX: "auto" }}>
               <Table
