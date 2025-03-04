@@ -109,11 +109,14 @@ const Page: React.FC = () => {
             <div style={{ overflowX: "auto" }}>
               <Table
                 dataSource={filteredData}
-                columns={Object.keys(jsonData[0] || {}).map((key) => ({
+                columns={Object.keys(jsonData[0] || {})
+                .filter((key) => !["_id", "SNo", "listCategory", "listSubCategory"].includes(key)) 
+                .map((key) => ({
                   title: key,
                   dataIndex: key,
                   key: key,
                 }))}
+                
                 rowKey={(record) => record._id || Math.random().toString()}
                 pagination={{ pageSize: 10 }}
                 style={{ minHeight: 100 }}
